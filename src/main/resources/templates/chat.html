@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Live Chat Application</title>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <!-- SockJS & STOMP -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@5.0.0/bundles/stomp.umd.min.js"></script>
+
+    <style>
+        :root {
+          --bg-main: #1b1e3d;
+          --bg-secondary: #14171d;
+          --bubble-bg: #2d2f5e;
+          --accent: #ff6ec4;
+          --text-color: #ffffff;
+        }
+
+        [data-theme='light'] {
+          --bg-main: #f4f4f7;
+          --bg-secondary: #ffffff;
+          --bubble-bg: #e7e9f1;
+          --accent: #6a5acd;
+          --text-color: #222;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: 'Poppins', sans-serif;
+          background: var(--bg-main);
+          color: var(--text-color);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          transition: background 0.4s ease, color 0.4s ease;
+        }
+
+        .chat-wrapper {
+          width: 100%;
+          max-width: 600px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 20px;
+          padding: 25px;
+          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.07);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .chat-header {
+          font-size: 1.8rem;
+          font-weight: 600;
+          text-align: center;
+          margin-bottom: 20px;
+          position: relative;
+        }
+
+        .chat-header i {
+          margin-right: 8px;
+          color: var(--accent);
+        }
+
+        .theme-toggle-icon {
+          position: absolute;
+          top: 10px;
+          right: 14px;
+          font-size: 1.2rem;
+          cursor: pointer;
+          color: var(--text-color);
+          padding: 6px;
+          border-radius: 8px;
+          transition: all 0.3s ease;
+        }
+
+        .theme-toggle-icon:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+          color: var(--accent);
+        }
+
+        #chat {
+          height: 340px;
+          overflow-y: auto;
+          background: var(--bg-secondary);
+          border-radius: 14px;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+
+        .chat-bubble {
+          padding: 14px 18px;
+          background: var(--bubble-bg);
+          border-left: 5px solid var(--accent);
+          border-radius: 12px;
+          animation: fadeIn 0.4s ease-out;
+          font-size: 1rem;
+          word-wrap: break-word;
+        }
+
+        .chat-bubble strong {
+          color: var(--accent);
+          margin-right: 8px;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .input-section {
+          margin-top: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        #senderInput {
+          padding: 12px 16px;
+          border-radius: 10px;
+          border: none;
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text-color);
+          font-size: 1rem;
+        }
+
+        .input-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .message-box {
+          flex: 1;
+          padding: 14px 18px;
+          border-radius: 50px;
+          border: none;
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text-color);
+          font-size: 1rem;
+        }
+
+        .send-btn {
+          min-width: 50px;
+          height: 50px;
+          background: linear-gradient(135deg, var(--accent), #7873f5);
+          border: none;
+          border-radius: 50%;
+          color: #fff;
+          font-size: 1.2rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 12px rgba(255, 110, 196, 0.4);
+          transition: transform 0.2s ease;
+        }
+
+        .send-btn:hover {
+          transform: scale(1.1);
+        }
+
+        @media (max-width: 550px) {
+          .chat-wrapper {
+            margin: 15px;
+            padding: 20px;
+          }
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-wrapper">
+    <div class="chat-header">
+        <i class="fas fa-comments"></i> Live Chat
+        <div class="theme-toggle-icon" id="themeToggle" title="Toggle Theme">
+            <i class="fas fa-moon" id="themeIcon"></i>
+        </div>
+    </div>
+
+    <div id="chat"></div>
+
+    <div class="input-section">
+        <input id="senderInput" type="text" placeholder="Enter your name" />
+        <div class="input-row">
+            <input id="messageInput" type="text" class="message-box" placeholder="Type your message..." />
+            <button id="sendMessage" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let stompClient;
+
+    function setConnected(connected) {
+      document.getElementById('sendMessage').disabled = !connected;
+    }
+
+    function connect() {
+      const socket = new SockJS('/chat');
+      stompClient = StompJs.Stomp.over(socket);
+
+      stompClient.connect({}, function (frame) {
+        console.log("Connected: " + frame);
+        setConnected(true);
+
+        stompClient.subscribe('/topic/message', function (message) {
+          showMessage(JSON.parse(message.body));
+        });
+      }, function (error) {
+        console.error("STOMP connection error:", error);
+      });
+    }
+
+    function showMessage(message) {
+      const chat = document.getElementById('chat');
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble';
+      bubble.innerHTML = `<strong>${message.sender}:</strong> ${message.content}`;
+      chat.appendChild(bubble);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function sendMessage() {
+      const sender = document.getElementById('senderInput').value;
+      const content = document.getElementById('messageInput').value;
+
+      if (!sender.trim() || !content.trim()) {
+        alert("Name and message are required!");
+        return;
+      }
+
+      const chatMessage = { sender, content };
+      stompClient.send("/app/sendMessage", {}, JSON.stringify(chatMessage));
+      document.getElementById('messageInput').value = '';
+    }
+
+    document.getElementById('sendMessage').onclick = sendMessage;
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+
+      const icon = document.getElementById('themeIcon');
+      icon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      applyTheme(savedTheme);
+      connect();
+    });
+
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+</script>
+
+</body>
+</html>
